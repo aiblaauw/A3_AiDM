@@ -10,7 +10,7 @@ find pairs of users where jsim(u1, u2) > 0.5
 **Usage**  
 
 ```
-python simmilarity.py -s {RANDOMSEED}  
+python similarity.py -s {RANDOMSEED}  
 
 results.txt
 {USER1, USER2, where jsim > 0.5}
