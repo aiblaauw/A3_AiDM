@@ -6,3 +6,12 @@ find pairs of users where jsim(u1, u2) > 0.5
 - Input user_movie.npy data
 - Also read random seed number from command line   
 - Output to textfile; list of records in the form u1,u2
+
+**Usage**  
+
+```
+python simmilarity.py -s {RANDOMSEED}  
+
+results.txt
+{USER1, USER2, where jsim > 0.5}
+```
