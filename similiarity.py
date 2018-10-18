@@ -21,6 +21,7 @@ np.random.seed(42)
  
 
 user_movie = np.load("user_movie.npy")
+user_movie = user_movie[:10000000,:]
 
 movie_users = dict() 
 
@@ -32,31 +33,32 @@ for i in user_movie:
     else:
         movie_users[m_id].add(u_id)  
 
-movies = list(movie_users)    
+movies = np.unique(user_movie[:,1])   
     
-    
+unique_users = len(np.unique(user_movie[:,0]))
 sig_dict = dict()
 
-unique_users = set()
-
+#In this part I removed the break because it sometimes caused some elements to be ommitted, as a result the code is much slower so we 
+#should find a way to incorporate the break back in.
 sig_len = 100
 for p in range(sig_len):
     print(p)
     index = np.random.permutation(len(movies)) 
     for i in index:
         users_m = movie_users[ movies[i] ]
-        unique_users.update(users_m)
         for u in users_m:
             if u not in sig_dict:
                 sig_dict[u] = [i]
             else:
                 if len(sig_dict[u]) == p+1:
-                    break
+                    #break
+                    m = 1
                 else:
                     sig_dict[u].append(i) 
-                    
+
+
 sig_list = list()                   
-for u in list(unique_users).sort():
+for u in range(unique_users):
     sig_list.append(sig_dict[u])
 sig_mat = np.matrix(sig_list)
 sig_mat = np.transpose(sig_mat)
@@ -74,7 +76,7 @@ for b in range(number_band):
 bucket_dict = {k: v for k, v in bucket_dict.items() if len(v) > 1}
 
 #partsize = 100
-
+'''
 for u_combo in itertools.combinations(sig_dict, 2):
     set_a = sig_dict[u_combo[0]]
     #set_a = set([set_a[i:i+partsize] for i in range(len(set_a))][:-partsize])
@@ -84,8 +86,18 @@ for u_combo in itertools.combinations(sig_dict, 2):
     combos = list()
     if jdist > 0.5:
         combos.append([u_combo, jdist])
-        
-        
+'''
+combos = list()        
+for bucket_id, bucket in bucket_dict.items():
+    combinations = itertools.combinations(bucket,2)
+    for combination in combinations:
+        vector_1 = user_movie[user_movie[:, 0] == combination[0]][:,1]
+        vector_2 = user_movie[user_movie[:, 0] == combination[1]][:,1] 
+        jdist = len(np.intersect1d(vector_1, vector_2)) / len(np.union1d(vector_1, vector_2))
+        print(jdist)
+        if jdist > 0.5:
+            combos.append([combination, jdist])
+
 # https://www.learndatasci.com/tutorials/building-recommendation-engine-locality-sensitive-hashing-lsh-python/
 # http://nbviewer.jupyter.org/github/mattilyra/LSH/blob/master/examples/Introduction.ipynb
 # https://towardsdatascience.com/understanding-locality-sensitive-hashing-49f6d1f6134
