@@ -5,11 +5,13 @@ Assignment 3: Similarity,
 find pairs of users where jsim(u1, u2) > 0.5
 - Jaccard similarity = intersect / union
 - Using Locality sensitive hashing algorithm with MinHashing
-
 - Input user_movie.npy data
 - Also read random seed number from command line   
 - Output to textfile; list of records in the form u1,u2
 """
+import time
+start_time = time.clock()
+
 
 import numpy as np
 import itertools
@@ -23,40 +25,41 @@ np.random.seed(42)
 user_movie = np.load("user_movie.npy")
 user_movie = user_movie[:10000000,:]
 
-movie_users = dict() 
+users_movies = dict() 
+hash_dict = dict()
 
 for i in user_movie:
     u_id = int(i[0])
     m_id = int(i[1])
-    if m_id not in movie_users:
-       movie_users[m_id] = {u_id} 
+    if u_id not in users_movies:
+       users_movies[u_id] = {m_id} 
     else:
-        movie_users[m_id].add(u_id)  
+        users_movies[u_id].add(m_id) 
+    if m_id not in hash_dict:
+        hash_dict[m_id] = 0
 
-movies = np.unique(user_movie[:,1])   
-    
+all_movies = np.unique(user_movie[:,1])   
 unique_users = len(np.unique(user_movie[:,0]))
-sig_dict = dict()
 
-#In this part I removed the break because it sometimes caused some elements to be ommitted, as a result the code is much slower so we 
-#should find a way to incorporate the break back in.
+sig_dict = dict()
 sig_len = 100
+
 for p in range(sig_len):
     print(p)
-    index = np.random.permutation(len(movies)) 
-    for i in index:
-        users_m = movie_users[ movies[i] ]
-        for u in users_m:
-            if u not in sig_dict:
-                sig_dict[u] = [i]
-            else:
-                if len(sig_dict[u]) == p+1:
-                    #break
-                    m = 1
-                else:
-                    sig_dict[u].append(i) 
-
-
+    index = np.random.permutation(max(all_movies)+1) 
+        
+    for u in users_movies:
+        h = set()
+        movies = users_movies[u]
+        
+        for m in movies:
+            h.add(index[m])
+ 
+        if u not in sig_dict:
+            sig_dict[u] = [max(h)]
+        else:
+            sig_dict[u].append(max(h))
+    
 sig_list = list()                   
 for u in range(unique_users):
     sig_list.append(sig_dict[u])
@@ -94,14 +97,14 @@ for bucket_id, bucket in bucket_dict.items():
         vector_1 = user_movie[user_movie[:, 0] == combination[0]][:,1]
         vector_2 = user_movie[user_movie[:, 0] == combination[1]][:,1] 
         jdist = len(np.intersect1d(vector_1, vector_2)) / len(np.union1d(vector_1, vector_2))
-        print(jdist)
         if jdist > 0.5:
+            print([combination, jdist])
             combos.append([combination, jdist])
 
 # https://www.learndatasci.com/tutorials/building-recommendation-engine-locality-sensitive-hashing-lsh-python/
 # http://nbviewer.jupyter.org/github/mattilyra/LSH/blob/master/examples/Introduction.ipynb
 # https://towardsdatascience.com/understanding-locality-sensitive-hashing-49f6d1f6134
-    
 
-
-
+print(len(combos))
+            
+print("\n--- %s minutes ---" %((time.clock()- start_time)/60))
