@@ -9,9 +9,9 @@ find pairs of users where jsim(u1, u2) > 0.5
 - Also read random seed number from command line   
 - Output to textfile; list of records in the form u1,u2
 """
+
 import time
 start_time = time.clock()
-
 
 import numpy as np
 import itertools
