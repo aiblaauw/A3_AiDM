@@ -18,88 +18,56 @@ import itertools
 import random
 
 import sys
+from scipy.sparse import csr_matrix, csc_matrix
 
 np.random.seed(42)
+
+start_time = time.clock()
  
 
 user_movie = np.load("user_movie.npy")
-user_movie = user_movie[:10000000,:]
 
-users_movies = dict() 
-hash_dict = dict()
-
-for i in user_movie:
-    u_id = int(i[0])
-    m_id = int(i[1])
-    if u_id not in users_movies:
-       users_movies[u_id] = {m_id} 
-    else:
-        users_movies[u_id].add(m_id) 
-    if m_id not in hash_dict:
-        hash_dict[m_id] = 0
-
-all_movies = np.unique(user_movie[:,1])   
+num_movies = len(np.unique(user_movie[:,1]))
 unique_users = len(np.unique(user_movie[:,0]))
 
-sig_dict = dict()
 sig_len = 100
 
+sparse_matrix = csr_matrix((np.ones(len(user_movie)), (user_movie[:,1], user_movie[:,0])))
+sig_mat = np.array(range(unique_users))
 for p in range(sig_len):
     print(p)
-    index = np.random.permutation(max(all_movies)+1) 
-        
-    for u in users_movies:
-        h = set()
-        movies = users_movies[u]
-        
-        for m in movies:
-            h.add(index[m])
- 
-        if u not in sig_dict:
-            sig_dict[u] = [max(h)]
-        else:
-            sig_dict[u].append(max(h))
+    index = np.random.permutation(num_movies) 
+    sparse_matrixcsc = sparse_matrix[index,:].tocsc()   
+    first_nonzero_row = sparse_matrixcsc.indices[sparse_matrixcsc.indptr[:-1]]
+    sig_mat = np.vstack((sig_mat, first_nonzero_row))
     
-sig_list = list()                   
-for u in range(unique_users):
-    sig_list.append(sig_dict[u])
-sig_mat = np.matrix(sig_list)
-sig_mat = np.transpose(sig_mat)
+    
+print("\n--- %s minutes ---" %((time.clock()- start_time)/60))
 
-bucket_dict = dict()
-number_band = 10
+
+number_band = 2
+potential_combos = list()
 for b in range(number_band):
+    bucket_dict = dict()
     for u in range(unique_users):
-        bucket_id = hash(sig_mat[10*b:10*b+10,u].tostring())
+        bucket_id = hash(sig_mat[np.int(sig_len/number_band)*b:np.int(sig_len/number_band)*b+np.int(sig_len/number_band),u].tostring())
         if bucket_id not in bucket_dict:
             bucket_dict[bucket_id] = [u]
         else:
             bucket_dict[bucket_id].append(u)
+    bucket_dict = {k: v for k, v in bucket_dict.items() if len(v) > 1}
+    for bucket_id, bucket in bucket_dict.items():
+        combinations = itertools.combinations(bucket,2)
+        for combination in combinations:
+            potential_combos.append(combination)
 
-bucket_dict = {k: v for k, v in bucket_dict.items() if len(v) > 1}
-
-#partsize = 100
-'''
-for u_combo in itertools.combinations(sig_dict, 2):
-    set_a = sig_dict[u_combo[0]]
-    #set_a = set([set_a[i:i+partsize] for i in range(len(set_a))][:-partsize])
-    set_b = sig_dict[u_combo[1]]
-    #set_b = set([set_b[i:i+partsize] for i in range(len(set_b))][:-partsize])
-    jdist = len(set_a & set_b) / len(set_a | set_b)
-    combos = list()
+for combination in potential_combos:
+    vector_1 = user_movie[user_movie[:, 0] == combination[0]][:,1]
+    vector_2 = user_movie[user_movie[:, 0] == combination[1]][:,1] 
+    jdist = len(np.intersect1d(vector_1, vector_2)) / len(np.union1d(vector_1, vector_2))
     if jdist > 0.5:
-        combos.append([u_combo, jdist])
-'''
-combos = list()        
-for bucket_id, bucket in bucket_dict.items():
-    combinations = itertools.combinations(bucket,2)
-    for combination in combinations:
-        vector_1 = user_movie[user_movie[:, 0] == combination[0]][:,1]
-        vector_2 = user_movie[user_movie[:, 0] == combination[1]][:,1] 
-        jdist = len(np.intersect1d(vector_1, vector_2)) / len(np.union1d(vector_1, vector_2))
-        if jdist > 0.5:
-            print([combination, jdist])
-            combos.append([combination, jdist])
+        print([combination, jdist])
+        combos.append([combination, jdist])
 
 # https://www.learndatasci.com/tutorials/building-recommendation-engine-locality-sensitive-hashing-lsh-python/
 # http://nbviewer.jupyter.org/github/mattilyra/LSH/blob/master/examples/Introduction.ipynb
